@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab')"
+
+      - name: Lint and Format Check
+        run: |
+          ruff check src tests
+          ruff format --check src tests
+
+      - name: Run Test Suite with Coverage Gate (>=70%)
+        run: |
+          pytest --cov=src --cov-fail-under=70 tests/
+
+      - name: Smoke Test (Sample Train & Inference Verification)
+        run: |
+          python -c "
+          import pandas as pd
+          from src.data.clean import clean_data
+          from src.data.split import make_stratified_split
+          from src.features.text import TextPreprocessor, build_bow_vectorizer
+          from sklearn.naive_bayes import MultinomialNB
+          from sklearn.pipeline import Pipeline
+          import joblib, os
+
+          # Create 500-row sample
+          df_raw = pd.DataFrame({
+              'Clothing ID': range(500),
+              'Age': [35] * 500,
+              'Title': ['Great item'] * 500,
+              'Review Text': ['I absolutely love this dress! Fits beautifully.'] * 250 + ['Worst purchase ever. Poor fabric.'] * 250,
+              'Rating': [5] * 250 + [1] * 250,
+              'Recommended IND': [1] * 250 + [0] * 250,
+              'Positive Feedback Count': [0] * 500,
+              'Division Name': ['General'] * 500,
+              'Department Name': ['Dresses'] * 500,
+              'Class Name': ['Dresses'] * 500
+          })
+          df_clean, _ = clean_data(df_raw)
+          df_split, _ = make_stratified_split(df_clean)
+          train_df = df_split[df_split['split'] == 'train']
+
+          pipe = Pipeline([
+              ('preprocessor', TextPreprocessor()),
+              ('vectorizer', build_bow_vectorizer()),
+              ('classifier', MultinomialNB())
+          ])
+          pipe.fit(train_df['review_text'], train_df['true_label'])
+          
+          os.makedirs('models/ci_smoke', exist_ok=True)
+          joblib.dump(pipe, 'models/ci_smoke/model.joblib')
+          
+          loaded = joblib.load('models/ci_smoke/model.joblib')
+          preds = loaded.predict(['Great fit!', 'Hate this'])
+          assert len(preds) == 2, 'Inference failed'
+          print('Smoke test passed successfully!')
+          "

@@ -1,0 +1,16 @@
+rating,predicted_label,review_count
+1,negative,737
+1,neutral,52
+1,positive,32
+2,negative,1242
+2,neutral,224
+2,positive,83
+3,negative,257
+3,neutral,2239
+3,positive,327
+4,negative,186
+4,neutral,720
+4,positive,4002
+5,negative,80
+5,neutral,193
+5,positive,12266

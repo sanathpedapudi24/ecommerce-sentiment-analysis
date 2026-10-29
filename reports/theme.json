@@ -1,0 +1,46 @@
+{
+  "name": "EcommerceSentimentTheme",
+  "dataColors": [
+    "#006D77",
+    "#6C757D",
+    "#D90429",
+    "#83C5BE",
+    "#ADB5BD",
+    "#E56B6F",
+    "#2B2D42",
+    "#EDF2F4"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#2B2D42",
+  "tableAccent": "#006D77",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "*": {
+          "fontFamily": "Segoe UI"
+        },
+        "title": [
+          {
+            "alignment": "Left",
+            "fontFamily": "Segoe UI Semibold",
+            "fontSize": 12
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#F8F9FA"
+              }
+            },
+            "transparency": 0
+          }
+        ]
+      }
+    }
+  }
+}

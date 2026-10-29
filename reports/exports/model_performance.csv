@@ -1,0 +1,2 @@
+model_version,algorithm,accuracy,macro_f1,trained_at,is_active
+v1.0.0,Tuned MultinomialNB,0.828,0.6556,2026-10-29 03:14:15,1
