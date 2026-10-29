@@ -26,6 +26,28 @@ def test_index_serves_ui(client):
     assert b"Review Sentiment" in resp.data
 
 
+def test_dashboard_page_and_data(client):
+    """GET /dashboard -> HTML page; GET /dashboard/data -> every reporting view as rows."""
+    page = client.get("/dashboard")
+    assert page.status_code == 200
+    assert b"Sentiment Dashboard" in page.data
+
+    resp = client.get("/dashboard/data")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert set(data) == {
+        "overview",
+        "by_department",
+        "rating_vs_predicted",
+        "negative_reviews",
+        "model_performance",
+        "api_usage",
+        "top_terms",
+    }
+    assert all(isinstance(rows, list) for rows in data.values())
+    assert len(data["negative_reviews"]) <= 200
+
+
 def test_get_health(client):
     """GET /health -> 200, status ok."""
     resp = client.get("/health")

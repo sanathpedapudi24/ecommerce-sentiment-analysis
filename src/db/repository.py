@@ -13,6 +13,17 @@ from src.config import DATABASE_URL, DB_PATH, EXPORTS_DIR
 
 _ENGINE: Engine | None = None
 
+# SQL reporting views and the table name each one gets in Power BI / the web dashboard
+REPORTING_VIEWS: dict[str, str] = {
+    "vw_sentiment_overview": "overview",
+    "vw_sentiment_by_department": "by_department",
+    "vw_rating_vs_predicted": "rating_vs_predicted",
+    "vw_negative_reviews": "negative_reviews",
+    "vw_model_performance": "model_performance",
+    "vw_api_usage": "api_usage",
+    "vw_top_terms": "top_terms",
+}
+
 
 def get_engine(db_url: str | None = None) -> Engine:
     """Get or create singleton SQLAlchemy Engine."""
@@ -412,39 +423,36 @@ def export_views_to_csv(
     out_dir = Path(export_dir) if export_dir else EXPORTS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    views = [
-        "vw_sentiment_overview",
-        "vw_sentiment_by_department",
-        "vw_rating_vs_predicted",
-        "vw_negative_reviews",
-        "vw_model_performance",
-        "vw_api_usage",
-        "vw_top_terms",
-    ]
-
     exported_files: list[Path] = []
     with eng.connect() as conn:
-        for v in views:
-            df = pd.read_sql_query(f"SELECT * FROM {v}", conn)
-            # Power BI friendly naming (e.g. overview.csv or vw_sentiment_overview.csv)
-            file_name = f"{v}.csv"
-            out_file = out_dir / file_name
-            df.to_csv(out_file, index=False)
-            exported_files.append(out_file)
-
-            # Also create standard alias names matching DASHBOARD.md table names
-            alias_map = {
-                "vw_sentiment_overview": "overview.csv",
-                "vw_sentiment_by_department": "by_department.csv",
-                "vw_rating_vs_predicted": "rating_vs_predicted.csv",
-                "vw_negative_reviews": "negative_reviews.csv",
-                "vw_model_performance": "model_performance.csv",
-                "vw_api_usage": "api_usage.csv",
-                "vw_top_terms": "top_terms.csv",
-            }
-            if v in alias_map:
-                alias_file = out_dir / alias_map[v]
-                df.to_csv(alias_file, index=False)
-                exported_files.append(alias_file)
+        for view, table in REPORTING_VIEWS.items():
+            df = pd.read_sql_query(f"SELECT * FROM {view}", conn)
+            # Write both the view name and the Power BI table name (DASHBOARD.md)
+            for file_name in (f"{view}.csv", f"{table}.csv"):
+                out_file = out_dir / file_name
+                df.to_csv(out_file, index=False)
+                exported_files.append(out_file)
 
     return exported_files
+
+
+def get_dashboard_data(
+    engine: Engine | None = None, negative_limit: int = 200
+) -> dict[str, list[dict[str, Any]]]:
+    """Return every reporting view as rows keyed by its Power BI table name.
+
+    negative_reviews is capped at the `negative_limit` lowest-confidence rows (the view's order).
+    """
+    eng = engine or get_engine()
+    init_db(eng)
+    with eng.connect() as conn:
+        return {
+            table: [
+                dict(r)
+                for r in conn.execute(
+                    text(f"SELECT * FROM {view} LIMIT :n"),
+                    {"n": negative_limit if table == "negative_reviews" else -1},
+                ).mappings()
+            ]
+            for view, table in REPORTING_VIEWS.items()
+        }

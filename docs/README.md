@@ -168,6 +168,8 @@ Four core reporting pages designed in accordance with `DASHBOARD.md`:
 
 > **Note**: the committed `.pbix` holds only a page layout and theme. It has no data model, so Power BI Desktop is unlikely to open it. Build the dashboard in Power BI Desktop by following [`reports/powerbi_guide.md`](reports/powerbi_guide.md) (CSV imports, DAX measures, theme), then save over this file.
 
+**No Power BI? Use the web dashboard.** `make serve`, then open **http://localhost:5000/dashboard**. It has the same four pages (Overview, Categories, Text insights, Model monitoring) and a department filter. It reads live from the same SQL views as the CSV exports, so there's nothing to refresh.
+
 ---
 
 ## 8. Ethics, Privacy & Fairness

@@ -17,6 +17,7 @@ from src.config import API_HOST, API_PORT, CLASSES, REQUEST_SIZE_LIMIT
 from src.db.repository import (
     fetch_reviews,
     get_active_model_run,
+    get_dashboard_data,
     get_engine,
     get_stats_summary,
     init_db,
@@ -90,6 +91,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def index():
         """GET / -> single-page UI that scores reviews through /predict and /predict/batch."""
         return app.send_static_file("index.html")
+
+    @app.route("/dashboard", methods=["GET"])
+    def dashboard():
+        """GET /dashboard -> 4-page reporting dashboard (same views as the Power BI exports)."""
+        return app.send_static_file("dashboard.html")
+
+    @app.route("/dashboard/data", methods=["GET"])
+    def dashboard_data():
+        """GET /dashboard/data -> all reporting views as JSON, read live from SQLite."""
+        return jsonify(get_dashboard_data(engine)), 200
 
     @app.route("/health", methods=["GET"])
     def health():

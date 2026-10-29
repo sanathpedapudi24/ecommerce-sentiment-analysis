@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentiment Dashboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #5f6878; --border: #dde1e7;
+    --accent: #2f5bea; --negative: #d32f2f; --neutral: #8a8f98; --positive: #2e7d32;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b1f27; --text: #e7eaf0; --muted: #9aa3b2; --border: #2c323d;
+      --accent: #7b9bff; --negative: #ef6b6b; --neutral: #a3a3a3; --positive: #5cbf63;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  a { color: var(--accent); }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.5rem; margin: 0; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .badge { font-size: .8rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+  .hint { color: var(--muted); font-size: .85rem; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 4px; }
+  [role="tablist"] { display: flex; gap: 4px; flex-wrap: wrap; }
+  [role="tab"] { font: inherit; background: transparent; color: var(--muted); border: 1px solid transparent; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+  [role="tab"][aria-selected="true"] { background: var(--card); color: var(--text); border-color: var(--border); font-weight: 600; }
+  select, input[type="search"] { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+  .grid { display: grid; gap: 16px; margin-top: 16px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .three { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; min-width: 0; }
+  .kpi .value { font-size: 1.7rem; font-weight: 700; }
+  .kpi .label { color: var(--muted); font-size: .85rem; }
+  .donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .donut { width: 170px; height: 170px; border-radius: 50%; position: relative; flex: none; }
+  .donut::after { content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--card); }
+  .legend { display: grid; gap: 6px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; }
+  .row { display: grid; grid-template-columns: 110px 1fr 64px; gap: 10px; align-items: center; font-size: .85rem; margin: 8px 0; }
+  .stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--border); }
+  .stack span { height: 100%; }
+  .track { height: 10px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  .heat td.cell { text-align: center; font-variant-numeric: tabular-nums; }
+  .review { color: var(--muted); overflow-wrap: anywhere; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  svg text { fill: var(--muted); font-size: 11px; }
+  svg .axis { stroke: var(--border); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sentiment Dashboard</h1>
+    <div class="row" style="grid-template-columns:auto auto; margin:0">
+      <span class="badge" id="model">loading…</span>
+      <a href="/">Analyze a review →</a>
+    </div>
+  </header>
+  <p class="hint">Live from the same SQL views as the Power BI exports. Sentiment shown is the model's prediction for every stored review.</p>
+
+  <div class="toolbar">
+    <div role="tablist" aria-label="Dashboard pages">
+      <button role="tab" aria-selected="true" aria-controls="page-overview" id="tab-overview">Overview</button>
+      <button role="tab" aria-selected="false" aria-controls="page-categories" id="tab-categories">Categories</button>
+      <button role="tab" aria-selected="false" aria-controls="page-text" id="tab-text">Text insights</button>
+      <button role="tab" aria-selected="false" aria-controls="page-model" id="tab-model">Model monitoring</button>
+    </div>
+    <label class="hint">Department
+      <select id="dept"><option value="">All departments</option></select>
+    </label>
+  </div>
+
+  <p class="empty" id="status">Loading data…</p>
+
+  <section id="page-overview" role="tabpanel" aria-labelledby="tab-overview" hidden>
+    <div class="grid kpis" id="kpis"></div>
+    <div class="grid two">
+      <div class="card"><h2>Sentiment share</h2><div class="donut-wrap" id="donut"></div></div>
+      <div class="card"><h2>Sentiment by department</h2><div id="by-dept"></div></div>
+    </div>
+  </section>
+
+  <section id="page-categories" role="tabpanel" aria-labelledby="tab-categories" hidden>
+    <div class="grid two">
+      <div class="card"><h2>Average rating vs % negative, per product class</h2><div id="scatter"></div>
+        <p class="hint">Classes with 20+ reviews; bubble size = number of reviews. Low and to the right is healthiest; high and to the left needs attention.</p></div>
+      <div class="card"><h2>Product classes ranked by % negative</h2><div class="scroll" id="classes"></div></div>
+    </div>
+  </section>
+
+  <section id="page-text" role="tabpanel" aria-labelledby="tab-text" hidden>
+    <div class="grid three" id="terms"></div>
+    <div class="grid two">
+      <div class="card"><h2>Star rating vs predicted sentiment</h2><div id="heatmap"></div>
+        <p class="hint">Share of each star rating's reviews per predicted label. Batch scoring covers every stored review, including the ones the model trained on, so agreement here runs higher than on unseen reviews (see test macro-F1 under Model monitoring).</p></div>
+      <div class="card"><h2>Least certain negative reviews</h2>
+        <input type="search" id="search" placeholder="Search review text…" aria-label="Search negative reviews" style="width:100%; margin-bottom:8px">
+        <div class="scroll" id="negatives"></div></div>
+    </div>
+  </section>
+
+  <section id="page-model" role="tabpanel" aria-labelledby="tab-model" hidden>
+    <div class="grid kpis" id="model-kpis"></div>
+    <div class="grid two">
+      <div class="card"><h2>API traffic per day</h2><div id="traffic"></div></div>
+      <div class="card"><h2>Model registry</h2><div class="scroll" id="registry"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const LABELS = ["negative", "neutral", "positive"];
+  const num = new Intl.NumberFormat();
+  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  const color = (label) => `var(--${label})`;
+  let DATA = null;
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;  // textContent, never innerHTML: review text is customer input
+    return e;
+  }
+  const svgEl = (tag, attrs) => {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  };
+
+  // ---- data helpers ----
+  const dept = () => $("dept").value;
+  const deptRows = () => DATA.by_department.filter((r) => !dept() || r.department_name === dept());
+  function tally(rows) {
+    const t = { negative: 0, neutral: 0, positive: 0, total: 0, ratingSum: 0 };
+    for (const r of rows) {
+      t[r.predicted_label] += r.review_count;
+      t.total += r.review_count;
+      t.ratingSum += r.avg_rating * r.review_count;
+    }
+    t.avgRating = t.total ? t.ratingSum / t.total : 0;
+    return t;
+  }
+  function groupBy(rows, key) {
+    const m = new Map();
+    for (const r of rows) { const k = key(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    return m;
+  }
+  function stack(t) {
+    const s = el("div", "stack");
+    for (const l of LABELS) {
+      const part = el("span");
+      part.style.width = `${t.total ? (t[l] / t.total) * 100 : 0}%`;
+      part.style.background = color(l);
+      part.title = `${l}: ${num.format(t[l])} (${pct(t.total ? t[l] / t.total : 0)})`;
+      s.append(part);
+    }
+    return s;
+  }
+  function kpi(value, label) {
+    const c = el("div", "card kpi");
+    c.append(el("div", "value", value), el("div", "label", label));
+    return c;
+  }
+
+  // ---- page 1: overview ----
+  function renderOverview() {
+    const t = tally(deptRows());
+    $("kpis").replaceChildren(
+      kpi(num.format(t.total), dept() ? `reviews in ${dept()}` : "reviews"),
+      ...LABELS.slice().reverse().map((l) => kpi(pct(t.total ? t[l] / t.total : 0), `${l}`)),
+      kpi(t.avgRating.toFixed(2), "average star rating"),
+    );
+
+    const neg = t.total ? (t.negative / t.total) * 100 : 0, neu = t.total ? (t.neutral / t.total) * 100 : 0;
+    const donut = el("div", "donut");
+    donut.style.background = `conic-gradient(${color("negative")} 0 ${neg}%, ${color("neutral")} ${neg}% ${neg + neu}%, ${color("positive")} ${neg + neu}% 100%)`;
+    donut.setAttribute("role", "img");
+    donut.setAttribute("aria-label", LABELS.map((l) => `${l} ${pct(t.total ? t[l] / t.total : 0)}`).join(", "));
+    const legend = el("div", "legend");
+    for (const l of LABELS.slice().reverse()) {
+      const item = el("div");
+      const sw = el("span", "swatch"); sw.style.background = color(l);
+      item.append(sw, `${l}  ${num.format(t[l])}  (${pct(t.total ? t[l] / t.total : 0)})`);
+      legend.append(item);
+    }
+    const stars = Object.fromEntries(DATA.overview.map((r) => [r.label, r.pct]));
+    legend.append(el("div", "hint", `Star-rating labels (all reviews): positive ${stars.positive ?? 0}% · neutral ${stars.neutral ?? 0}% · negative ${stars.negative ?? 0}%`));
+    $("donut").replaceChildren(donut, legend);
+
+    const depts = [...groupBy(DATA.by_department, (r) => r.department_name)]
+      .map(([name, rows]) => [name, tally(rows)])
+      .sort((a, b) => b[1].total - a[1].total);
+    $("by-dept").replaceChildren(...depts.map(([name, dt]) => {
+      const row = el("div", "row");
+      if (dept() && dept() !== name) row.style.opacity = ".35";
+      row.append(el("span", null, name), stack(dt), el("span", "hint", num.format(dt.total)));
+      return row;
+    }));
+  }
+
+  // ---- page 2: categories ----
+  function classStats() {
+    return [...groupBy(deptRows(), (r) => `${r.department_name}\u0000${r.class_name}`)].map(([k, rows]) => {
+      const [d, c] = k.split("\u0000");
+      const t = tally(rows);
+      return { dept: d, cls: c, total: t.total, avgRating: t.avgRating, negShare: t.total ? t.negative / t.total : 0 };
+    });
+  }
+  function renderCategories() {
+    const stats = classStats().filter((s) => s.total > 0);
+    if (!stats.length) { $("scatter").replaceChildren(el("p", "empty", "No reviews.")); $("classes").replaceChildren(); return; }
+
+    // Scatter: x = avg rating, y = % negative, area ~ review count. Tiny classes would stretch the axes.
+    const W = 560, H = 300, P = { l: 44, r: 16, t: 12, b: 36 };
+    const plotted = stats.filter((s) => s.total >= 20);
+    const pts = plotted.length ? plotted : stats;
+    const xs = pts.map((s) => s.avgRating), ys = pts.map((s) => s.negShare);
+    const xMin = Math.floor(Math.min(...xs) * 2) / 2, xMax = Math.ceil(Math.max(...xs) * 2) / 2 || 5;
+    const yMax = Math.max(0.05, Math.ceil(Math.max(...ys) * 20) / 20);
+    const X = (v) => P.l + ((v - xMin) / Math.max(xMax - xMin, 0.5)) * (W - P.l - P.r);
+    const Y = (v) => H - P.b - (v / yMax) * (H - P.t - P.b);
+    const maxN = Math.max(...pts.map((s) => s.total));
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img", "aria-label": "Average rating versus share of negative reviews per product class" });
+    svg.append(svgEl("line", { class: "axis", x1: P.l, y1: H - P.b, x2: W - P.r, y2: H - P.b }),
+               svgEl("line", { class: "axis", x1: P.l, y1: P.t, x2: P.l, y2: H - P.b }));
+    for (let v = xMin; v <= xMax + 1e-9; v += 0.5) {
+      const t = svgEl("text", { x: X(v), y: H - P.b + 16, "text-anchor": "middle" }); t.textContent = v.toFixed(1); svg.append(t);
+    }
+    for (let v = 0; v <= yMax + 1e-9; v += yMax / 4) {
+      const t = svgEl("text", { x: P.l - 6, y: Y(v) + 4, "text-anchor": "end" }); t.textContent = `${Math.round(v * 100)}%`; svg.append(t);
+    }
+    const xl = svgEl("text", { x: (W + P.l) / 2, y: H - 4, "text-anchor": "middle" }); xl.textContent = "average star rating"; svg.append(xl);
+    const yl = svgEl("text", { x: 12, y: (H - P.b + P.t) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(H - P.b + P.t) / 2})` });
+    yl.textContent = "% negative"; svg.append(yl);
+    for (const s of [...pts].sort((a, b) => b.total - a.total)) {
+      const c = svgEl("circle", { cx: X(s.avgRating), cy: Y(s.negShare), r: 4 + 18 * Math.sqrt(s.total / maxN),
+        fill: color("negative"), "fill-opacity": 0.35, stroke: color("negative") });
+      const tip = svgEl("title", {}); tip.textContent = `${s.cls} (${s.dept}): ${num.format(s.total)} reviews, rating ${s.avgRating.toFixed(2)}, ${pct(s.negShare)} negative`;
+      c.append(tip); svg.append(c);
+    }
+    $("scatter").replaceChildren(svg);
+
+    const table = el("table");
+    const head = el("tr");
+    [["Class"], ["Department"], ["Reviews", "num"], ["Avg rating", "num"], ["% negative", "num"]].forEach(([h, c]) => head.append(el("th", c, h)));
+    table.append(head);
+    const maxNeg = Math.max(...stats.map((s) => s.negShare), 0.01);
+    for (const s of stats.sort((a, b) => b.negShare - a.negShare)) {
+      const tr = el("tr");
+      const negCell = el("td", "num", pct(s.negShare));
+      negCell.style.background = `color-mix(in srgb, var(--negative) ${Math.round((s.negShare / maxNeg) * 35)}%, transparent)`;
+      tr.append(el("td", null, s.cls), el("td", "hint", s.dept), el("td", "num", num.format(s.total)),
+                el("td", "num", s.avgRating.toFixed(2)), negCell);
+      table.append(tr);
+    }
+    $("classes").replaceChildren(table);
+  }
+
+  // ---- page 3: text insights ----
+  function renderText() {
+    $("terms").replaceChildren(...LABELS.map((l) => {
+      const card = el("div", "card");
+      card.append(el("h2", null, `Top ${l} terms`));
+      const terms = DATA.top_terms.filter((t) => t.label === l).sort((a, b) => a.rank - b.rank);
+      const max = Math.max(...terms.map((t) => t.weight), 1e-9);
+      if (!terms.length) card.append(el("p", "empty", "No term stats for this model."));
+      for (const t of terms) {
+        const row = el("div", "row");
+        row.style.gridTemplateColumns = "1fr 90px 36px";
+        const track = el("div", "track"), fill = el("div", "fill");
+        fill.style.width = `${(t.weight / max) * 100}%`; fill.style.background = color(l);
+        track.append(fill);
+        row.append(el("span", null, t.term), track, el("span", "hint", t.weight.toFixed(2)));
+        card.append(row);
+      }
+      return card;
+    }));
+
+    const byRating = groupBy(DATA.rating_vs_predicted, (r) => r.rating);
+    const table = el("table", "heat");
+    const head = el("tr"); head.append(el("th", null, "Stars"));
+    LABELS.forEach((l) => head.append(el("th", "num", l)));
+    table.append(head);
+    for (const rating of [5, 4, 3, 2, 1]) {
+      const rows = byRating.get(rating) || [];
+      const total = rows.reduce((s, r) => s + r.review_count, 0);
+      const tr = el("tr"); tr.append(el("td", null, "★".repeat(rating)));
+      for (const l of LABELS) {
+        const n = rows.filter((r) => r.predicted_label === l).reduce((s, r) => s + r.review_count, 0);
+        const share = total ? n / total : 0;
+        const td = el("td", "cell", `${pct(share)} · ${num.format(n)}`);
+        td.style.background = `color-mix(in srgb, ${color(l)} ${Math.round(share * 60)}%, transparent)`;
+        tr.append(td);
+      }
+      table.append(tr);
+    }
+    $("heatmap").replaceChildren(table);
+    renderNegatives();
+  }
+  function renderNegatives() {
+    const q = $("search").value.trim().toLowerCase();
+    const rows = DATA.negative_reviews.filter((r) =>
+      (!dept() || r.department_name === dept()) &&
+      (!q || `${r.title || ""} ${r.review_text}`.toLowerCase().includes(q)));
+    const shown = rows.slice(0, 50);
+    const table = el("table");
+    const head = el("tr");
+    [["Confidence", "num"], ["Product"], ["Review"]].forEach(([h, c]) => head.append(el("th", c, h)));
+    table.append(head);
+    for (const r of shown) {
+      const tr = el("tr");
+      const review = el("td");
+      if (r.title) review.append(el("strong", null, r.title), el("br"));
+      review.append(el("span", "review", r.review_text));
+      tr.append(el("td", "num", pct(r.confidence)), el("td", "hint", `${r.class_name} · ${r.department_name}`), review);
+      table.append(tr);
+    }
+    $("negatives").replaceChildren(
+      el("p", "hint", `Showing ${shown.length} of ${rows.length} (the ${DATA.negative_reviews.length} lowest-confidence negatives)`),
+      rows.length ? table : el("p", "empty", "No matching reviews."));
+  }
+
+  // ---- page 4: model monitoring ----
+  function renderModel() {
+    const active = DATA.model_performance.find((m) => m.is_active) || DATA.model_performance[0];
+    $("model-kpis").replaceChildren(...(active ? [
+      kpi(active.model_version, "active model"),
+      kpi(active.algorithm, "algorithm"),
+      kpi(active.accuracy.toFixed(4), "test accuracy"),
+      kpi(active.macro_f1.toFixed(4), "test macro-F1"),
+      kpi(String(active.trained_at).slice(0, 16), "trained (UTC)"),
+    ] : [el("p", "empty", "No trained model registered yet. Run make train.")]));
+
+    const days = [...groupBy(DATA.api_usage, (r) => r.date)].sort((a, b) => a[0].localeCompare(b[0]));
+    if (!days.length) {
+      const p = el("p", "empty", "No API traffic yet. ");
+      const a = el("a", null, "Score a review"); a.href = "/";
+      p.append(a);
+      $("traffic").replaceChildren(p);
+    } else {
+      $("traffic").replaceChildren(...days.map(([day, rows]) => {
+        const t = { negative: 0, neutral: 0, positive: 0, total: 0 };
+        let confSum = 0;
+        for (const r of rows) { t[r.label] += r.request_count; t.total += r.request_count; confSum += r.avg_confidence * r.request_count; }
+        const row = el("div", "row");
+        row.style.gridTemplateColumns = "90px 1fr 150px";
+        row.append(el("span", null, day), stack(t), el("span", "hint", `${num.format(t.total)} req · conf ${(confSum / t.total).toFixed(2)}`));
+        return row;
+      }));
+    }
+
+    const table = el("table");
+    const head = el("tr");
+    [["Version"], ["Algorithm"], ["Accuracy", "num"], ["Macro-F1", "num"], ["Trained"], ["Status"]].forEach(([h, c]) => head.append(el("th", c, h)));
+    table.append(head);
+    for (const m of DATA.model_performance) {
+      const tr = el("tr");
+      tr.append(el("td", null, m.model_version), el("td", null, m.algorithm), el("td", "num", m.accuracy.toFixed(4)),
+                el("td", "num", m.macro_f1.toFixed(4)), el("td", "hint", String(m.trained_at).slice(0, 16)),
+                el("td", null, m.is_active ? "active" : ""));
+      table.append(tr);
+    }
+    $("registry").replaceChildren(DATA.model_performance.length ? table : el("p", "empty", "No models registered."));
+  }
+
+  // ---- wiring ----
+  const PAGES = { overview: renderOverview, categories: renderCategories, text: renderText, model: renderModel };
+  let current = "overview";
+  function show(page) {
+    current = page;
+    for (const p of Object.keys(PAGES)) {
+      $(`tab-${p}`).setAttribute("aria-selected", String(p === page));
+      $(`page-${p}`).hidden = p !== page;
+    }
+    PAGES[page]();
+  }
+  Object.keys(PAGES).forEach((p) => $(`tab-${p}`).addEventListener("click", () => show(p)));
+  $("dept").addEventListener("change", () => PAGES[current]());
+  $("search").addEventListener("input", renderNegatives);
+
+  fetch("/dashboard/data")
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((data) => {
+      DATA = data;
+      const active = data.model_performance.find((m) => m.is_active);
+      $("model").textContent = active ? `model ${active.model_version} · macro-F1 ${active.macro_f1.toFixed(3)}` : "no active model";
+      const depts = [...new Set(data.by_department.map((r) => r.department_name))].sort();
+      depts.forEach((d) => $("dept").append(new Option(d, d)));
+      $("status").hidden = true;
+      show("overview");
+    })
+    .catch(() => { $("status").textContent = "Could not load dashboard data from the API."; });
+</script>
+</body>
+</html>
