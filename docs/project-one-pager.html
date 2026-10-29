@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project One-Pager · Customer Sentiment Analysis</title>
+<style>
+  @page { size: A4; margin: 9mm 10mm; }
+  :root { --text: #1d2330; --muted: #5a6372; --line: #dde1e7; --accent: #2f5bea; --soft: #f3f5f9;
+          --neg: #c62828; --neu: #6b7280; --pos: #2e7d32; }
+  * { box-sizing: border-box; }
+  html { background: #e9ecf1; }
+  body { margin: 0; color: var(--text); font: 8.3pt/1.36 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  .page { width: 210mm; min-height: 297mm; margin: 12px auto; padding: 9mm 10mm; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+  @media print { html { background: #fff; } .page { margin: 0; padding: 0; width: auto; min-height: 0; box-shadow: none; } }
+  header { border-bottom: 2px solid var(--accent); padding-bottom: 5px; }
+  header .sub { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  h1 { font-size: 14pt; margin: 0; line-height: 1.15; }
+  .tagline { color: var(--muted); margin-top: 2px; }
+  .meta { text-align: right; flex: none; color: var(--muted); font-size: 7.6pt; white-space: nowrap; }
+  h2 { font-size: 9.4pt; margin: 0 0 3px; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
+  p { margin: 0 0 4px; }
+  ul { margin: 0; padding-left: 13px; }
+  li { margin: 0 0 1.5px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-top: 6px; }
+  .cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 14px; margin-top: 6px; }
+  section { break-inside: avoid; }
+  .arch { margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
+  .arch { overflow: hidden; }
+  .arch img { width: 100%; display: block; margin: -6.6% 0 -4.5%; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.9pt; }
+  th, td { padding: 1.6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 4px; }
+  .kpi { background: var(--soft); border-radius: 5px; padding: 3px 6px; }
+  .kpi b { display: block; font-size: 11pt; white-space: nowrap; }
+  .kpi span { color: var(--muted); font-size: 7.2pt; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 7.7pt; background: var(--soft); padding: 0 3px; border-radius: 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 3px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; font-size: 7.4pt; }
+  .neg { color: var(--neg); } .neu { color: var(--neu); } .pos { color: var(--pos); }
+  .note { color: var(--muted); font-size: 7.5pt; }
+  footer { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--line); color: var(--muted); font-size: 7.3pt; display: flex; justify-content: space-between; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Customer Sentiment Analysis &amp; Reporting for E&#8209;commerce</h1>
+    <div class="sub">
+      <div class="tagline">Capstone project · an end-to-end ML system that turns raw product reviews into live sentiment predictions and business dashboards</div>
+      <div class="meta">Model v1.1.0 · Python 3.11 · scikit-learn · NLTK · SQLite · Flask · Power BI</div>
+    </div>
+  </header>
+
+  <div class="cols">
+    <section>
+      <h2>Problem &amp; goal</h2>
+      <p>Star ratings say <i>how</i> happy customers are, not <i>why</i>, and new feedback (support messages, social posts) often has no rating at all. The goal is to classify review text as <b class="neg">negative</b>, <b class="neu">neutral</b> or <b class="pos">positive</b>, store every prediction, serve the model through an API, and show the results to business teams.</p>
+    </section>
+    <section>
+      <h2>Data</h2>
+      <ul>
+        <li><b>Women's E-Commerce Clothing Reviews</b> (public): 23,486 reviews with title, text, 1–5 stars, department and class.</li>
+        <li>Cleaning removed 845 empty reviews and 1 duplicate → <b>22,640</b> reviews.</li>
+        <li>Labels from stars: 1–2 negative, 3 neutral, 4–5 positive. Imbalanced: <span class="pos">77.1%</span> / <span class="neu">12.5%</span> / <span class="neg">10.5%</span>.</li>
+        <li>Stratified split 70 / 15 / 15 (train / validation / test). The test set is used once, for the final score.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="arch"><img src="architecture.png" alt="System architecture: data, preparation, machine learning, deployment and insights stages with a feedback loop and an MLOps foundation"></div>
+
+  <div class="cols3">
+    <section>
+      <h2>Machine learning</h2>
+      <ul>
+        <li><b>Text processing:</b> lowercase; strip URLs, HTML and digits; tokenise; remove stop words but <b>keep negations</b> ("didn't", "dont" → "not"); lemmatise.</li>
+        <li><b>Features:</b> bag-of-words and TF-IDF over 1–2 word n-grams.</li>
+        <li><b>Models compared:</b> Naive Bayes (baseline), Logistic Regression, Random Forest, HistGradientBoosting.</li>
+        <li><b>Tuning:</b> Grid and randomized search with stratified k-fold CV. Imbalance handled with balanced class weights and a macro-F1 target.</li>
+        <li><b>Selection:</b> best validation macro-F1 wins; one pipeline object holds cleaning, features and the classifier, so training and serving can't drift.</li>
+        <li><b>Extra analysis:</b> K-Means clustering finds complaint themes (sizing, fabric quality, fit).</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Results (held-out test set)</h2>
+      <div class="kpis">
+        <div class="kpi"><b>0.660</b><span>macro-F1</span></div>
+        <div class="kpi"><b>82.9%</b><span>accuracy</span></div>
+        <div class="kpi"><b>0.654</b><span>baseline</span></div>
+        <div class="kpi"><b>6 pts</b><span>max gap</span></div>
+      </div>
+      <table>
+        <tr><th>Class</th><th class="n">Precision</th><th class="n">Recall</th><th class="n">F1</th></tr>
+        <tr><td class="neg">Negative</td><td class="n">0.58</td><td class="n">0.60</td><td class="n">0.59</td></tr>
+        <tr><td class="neu">Neutral</td><td class="n">0.43</td><td class="n">0.50</td><td class="n">0.46</td></tr>
+        <tr><td class="pos">Positive</td><td class="n">0.94</td><td class="n">0.91</td><td class="n">0.93</td></tr>
+      </table>
+      <p style="margin-top:4px">Winner: tuned Multinomial Naive Bayes (α = 0.5). All acceptance gates pass: macro-F1 ≥ 0.65, beats the baseline, minority recall ≥ 0.30. No department or age band is more than 6 points from the overall score.</p>
+      <p class="note"><b>Limitations:</b> neutral is the weakest class, because 83% of 3-star reviews mix praise and complaints. Very short or off-topic text can lean positive. Labels come from star ratings, so they are a proxy.</p>
+    </section>
+    <section>
+      <h2>Deployment &amp; reporting</h2>
+      <ul>
+        <li><b>REST API</b> (Flask): <code>POST /predict</code>, <code>/predict/batch</code> (≤ 100), <code>GET /reviews</code>, <code>/stats</code>, <code>/health</code>, <code>/model/info</code>. Local latency p50 ≈ 24 ms, p95 ≈ 134 ms.</li>
+        <li><b>Web app</b> at <code>/</code>: paste reviews and see the label and class probabilities.</li>
+        <li><b>Web dashboard</b> at <code>/dashboard</code>: overview, categories, text insights and model monitoring, read live from SQL.</li>
+        <li><b>Batch scoring</b> stores a prediction for every review; every API call is stored too.</li>
+        <li><b>Database:</b> SQLite with constraints and 7 reporting views, exported to CSV for <b>Power BI</b> (4-page layout plus a setup guide).</li>
+        <li><b>Privacy:</b> logs never contain review text; fairness is checked by department and age.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>MLOps &amp; engineering</h2>
+      <ul>
+        <li>Reproducible environment with <b>uv</b> (locked dependencies, pinned Python); fixed random seed.</li>
+        <li>Versioned models with metadata (data hash, seed, library version, metrics) and a registry with promote and rollback.</li>
+        <li>One-command pipeline: <code>make all</code> = ingest → EDA → train → batch-score → export (about 4½ min).</li>
+        <li><b>47 automated tests</b>, 74% coverage (gate 70%), ruff lint, GitHub Actions CI on every push.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Run it</h2>
+      <p><code>make setup</code> → <code>make data</code> → <code>make train</code> → <code>make serve</code>, then open <code>localhost:5000</code> and <code>/dashboard</code>. On Windows use <code>.\make.ps1 &lt;target&gt;</code>. Dataset goes in the data folder as <code>reviews.csv</code>.</p>
+      <h2 style="margin-top:5px">Course modules covered</h2>
+      <div class="chips">
+        <span class="chip">ML &amp; data science ecosystem · NumPy</span><span class="chip">Pandas · Matplotlib · Seaborn</span>
+        <span class="chip">Scikit-learn · supervised learning · feature engineering</span><span class="chip">Model evaluation · clustering</span>
+        <span class="chip">NLP · Naive Bayes</span><span class="chip">SQL · Python + SQL</span>
+        <span class="chip">Flask · Power BI · ensembles · tuning</span><span class="chip">ML pipelines · MLOps</span>
+        <span class="chip"><b>Capstone:</b> this project</span>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span>More detail in the repository: README, requirements, data, ML pipeline, database, API, dashboard, MLOps, ethics and testing documents, plus DEMO.md.</span>
+    <span>github.com/sanathpedapudi24/ecommerce-sentiment-analysis</span>
+  </footer>
+</div>
+</body>
+</html>

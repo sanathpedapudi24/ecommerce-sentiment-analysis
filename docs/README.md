@@ -204,6 +204,8 @@ All eleven specification and requirements documents are maintained in root and m
 
 | File | Purpose |
 |---|---|
+| [docs/project-one-pager.pdf](project-one-pager.pdf) | One-page project summary to print or hand in (source: `docs/project-one-pager.html`) |
+| [notebooks/00_complete_project.ipynb](../notebooks/00_complete_project.ipynb) | The whole project in one notebook: data loading, cleaning, EDA charts, bag-of-words, model training, tuning, evaluation, error and neutral-class analysis, fairness, clustering |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Functional and non-functional requirements, scope, acceptance criteria |
 | [DATA.md](DATA.md) | Raw dataset schema, cleaning rules, label derivation, and split strategy |
 | [ML_PIPELINE.md](ML_PIPELINE.md) | Preprocessing, feature extraction, candidate models, tuning, and evaluation |
