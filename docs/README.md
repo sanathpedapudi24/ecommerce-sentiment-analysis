@@ -48,21 +48,9 @@ Add a dependency with `uv add <package>` (or `uv add --dev <package>`); never ed
 
 ## 2. System Architecture
 
-```
-              ┌────────────┐   ┌───────────┐   ┌─────────────┐
-raw CSV  ───► │ Ingestion  │──►│  SQLite   │◄──│  Flask API  │◄── Clients / Webhooks
-              └────────────┘   │ reviews   │   │  /predict   │
-                    │          │predictions│  └──────▲──────┘
-                    ▼          │model_runs │          │ loads active
-              ┌────────────┐   │ views     │   ┌──────┴──────┐
-              │ Training   │──►└─────┬─────┘   │ models/<v>/ │
-              │ Pipeline   │─────────┼────────►│ model.joblib│ (2.77 MB)
-              └────────────┘         │         └─────────────┘
-                                     ▼
-                               ┌─────────────┐
-                               │ CSV Exports │──► Power BI Dashboard
-                               └─────────────┘    (reports/sentiment_dashboard.pbix)
-```
+![System architecture: data, preparation, machine learning, deployment and insights stages with a feedback loop and MLOps foundation](architecture.png)
+
+Editable source: [`docs/architecture.tldr`](architecture.tldr). Open it at [tldraw.com](https://www.tldraw.com) (menu → File → Open) or with the tldraw VS Code extension. For a component-level view of the code, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
