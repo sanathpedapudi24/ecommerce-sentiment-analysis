@@ -13,9 +13,9 @@ database:
   db_path: "data/sentiment.db"
 
 model:
-  version: "v1.0.0"
+  version: "v1.1.0"
   models_dir: "models"
-  active_version: "v1.0.0"
+  active_version: "v1.1.0"
 
 features:
   ngram_range: [1, 2]

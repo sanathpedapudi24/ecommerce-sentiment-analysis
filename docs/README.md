@@ -80,24 +80,28 @@ raw CSV  ───► │ Ingestion  │──►│  SQLite   │◄──│  
 
 ## 4. Key Performance Benchmarks
 
-All models use fixed random seed `42` and a stratified 70/15/15 train/validation/test split; tuning uses stratified k-fold CV on the train split. Every non-baseline model (standard and tuned, including the Random Forest and HistGradientBoosting ensembles) competes on **validation** macro-F1, and only the winner is scored on the test set. `make train` regenerates the full table in [`reports/evaluation.md`](reports/evaluation.md); the numbers below are from the committed v1.0.0 run:
+All models use fixed random seed `42` and a stratified 70/15/15 train/validation/test split; tuning uses stratified k-fold CV on the train split. Every non-baseline model (standard and tuned, including the Random Forest and HistGradientBoosting ensembles) competes on **validation** macro-F1, and only the winner is scored on the test set. `make train` regenerates the full table in [`reports/evaluation.md`](reports/evaluation.md); the numbers below are from the active **v1.1.0** run (22,640 reviews):
 
 | Model | Feature Extraction | Val Macro-F1 | Val Accuracy | Status |
 |---|---|---|---|---|
-| Untuned MultinomialNB (Baseline) | Bag-of-Words | 0.6447 | 0.8336 | Benchmark (test macro-F1 0.6484) |
-| Untuned MultinomialNB | TF-IDF | 0.3013 | 0.7724 | Benchmark |
-| Standard Logistic Regression ($C=1.0$) | TF-IDF | 0.6551 | 0.8218 | Candidate |
-| Standard Random Forest (100 trees) | TF-IDF | 0.4072 | 0.7912 | Candidate |
-| **Tuned MultinomialNB ($\alpha=0.5$)** | **Bag-of-Words** | **0.6523** | **0.8292** | **ACTIVE v1.0.0: test macro-F1 0.6556, test accuracy 0.8280** |
-| Tuned Logistic Regression ($C=2.48$) | TF-IDF | 0.6467 | 0.8242 | Candidate |
+| Untuned MultinomialNB (Baseline) | Bag-of-Words | 0.6513 | 0.8363 | Benchmark (test macro-F1 0.6537) |
+| Untuned MultinomialNB | TF-IDF | 0.2994 | 0.7721 | Benchmark |
+| Standard Logistic Regression ($C=1.0$) | TF-IDF | 0.6424 | 0.8171 | Candidate |
+| Standard Random Forest (100 trees) | TF-IDF | 0.5911 | 0.8283 | Candidate |
+| **Tuned MultinomialNB ($\alpha=0.5$, learned prior)** | **Bag-of-Words (1–2 grams)** | **0.6595** | **0.8313** | **ACTIVE v1.1.0: test macro-F1 0.6602, test accuracy 0.8289** |
+| Tuned Logistic Regression ($C=2.48$) | TF-IDF | 0.6437 | 0.8242 | Candidate |
+| Tuned Random Forest (150 trees, depth 30) | TF-IDF | 0.6020 | 0.8009 | Candidate |
+| Tuned HistGradientBoosting | TF-IDF → SVD (50) | 0.5345 | 0.8071 | Candidate |
 
-> The committed v1.0.0 run predates two fixes: the Standard Logistic Regression and the tuned Random Forest / HistGradientBoosting models were not allowed to compete, and contractions such as *didn't* lost their negation in preprocessing. Re-run `make train` to refresh the model and this table.
+v1.1.0 replaces v1.0.0 (test macro-F1 0.6556) after two fixes: contractions such as *didn't* / *dont* now keep their negation, and every non-baseline model competes in selection.
 
-- **Macro-F1 Acceptance Gate (>= 0.65)**: Passed (0.6556).
-- **Beats Baseline**: Passed (+0.0072 F1 improvement over baseline).
-- **Inference Latency (p95 < 200 ms)**: Passed (p50 ~ 10 ms, p95 ~ 25 ms locally).
+- **Macro-F1 Acceptance Gate (>= 0.65)**: Passed (0.6602).
+- **Beats Baseline**: Passed (+0.0065 macro-F1 over the untuned baseline).
+- **Minority Recall (>= 0.30)**: Passed (negative recall 0.6039).
+- **Inference Latency (p95 < 200 ms)**: Passed (p50 ~ 24 ms, p95 ~ 134 ms over 20 local HTTP calls).
 - **Model Artifact Size (< 100 MB)**: Passed (2.77 MB).
 - **Class Probabilities Sum**: $1.000000 \pm 10^{-6}$.
+- **Known limitation**: very short or off-topic text (e.g. *"I dont like the phone"*) can still come out positive. Reviews have a median of 62 words and only 0.6% are under 10 words, so the model has little evidence to outweigh the 77%-positive class prior. On real test reviews under 15 words it holds up (macro-F1 0.62, negative recall 0.75).
 
 ---
 
@@ -122,7 +126,7 @@ curl -X POST http://localhost:5000/predict \
     "neutral": 0.0002,
     "positive": 0.9998
   },
-  "model_version": "v1.0.0"
+  "model_version": "v1.1.0"
 }
 ```
 
@@ -153,7 +157,7 @@ The project includes one-command automation via `Makefile` (and `make.ps1` for W
 | `make eda` | Generate standardized EDA visual figures in `reports/figures/` |
 | `make train` | Run candidate comparison, hyperparameter tuning, evaluation, and serialization |
 | `make evaluate` | Compute evaluation metrics for the active model |
-| `make promote VERSION=v1.0.0` | Promote a registered model version to active |
+| `make promote VERSION=v1.1.0` | Promote a version registered in `model_runs` to active |
 | `make batch-score` | Score all stored reviews in SQLite and persist predictions (`source='batch'`) |
 | `make export` | Export all 7 SQL views to `reports/exports/*.csv` for Power BI |
 | `make serve` | Launch the Flask REST API server |
@@ -227,7 +231,7 @@ All eleven specification and requirements documents are maintained in root and m
 ## 11. Deliverables Manifest
 
 - **Source Code**: Fully modular code in `src/` (`data/`, `features/`, `models/`, `db/`, `api/`, `cli.py`).
-- **Trained Model Artifact**: `models/v1.0.0/model.joblib` (2.77 MB) + `metadata.json` + `metrics.json`.
+- **Trained Model Artifact**: `models/v1.1.0/model.joblib` (2.77 MB; v1.0.0 kept as history) + `metadata.json` + `metrics.json`.
 - **Database File**: `data/sentiment.db` (populated with 22,640 reviews, model run registry, and 22,640 predictions).
 - **Power BI Dashboard**: `reports/sentiment_dashboard.pbix` + `reports/theme.json` + `reports/powerbi_guide.md`.
 - **Reports & Artifacts**: `reports/evaluation.md`, `reports/data_quality.md`, `reports/themes.md`, `reports/errors.csv`, and EDA charts in `reports/figures/`.

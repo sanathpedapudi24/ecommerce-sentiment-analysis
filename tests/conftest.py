@@ -21,10 +21,11 @@ os.environ["DB_PATH"] = str(Path(tempfile.mkdtemp()) / "test_sentiment.db")
 
 @pytest.fixture(scope="session")
 def seeded_db(tmp_path_factory):
-    """Ingest a small sample covering every label and split, and register v1.0.0 as active.
+    """Ingest a small sample covering every label and split, and register the configured model version as active.
 
     Lets DB-backed tests run without the raw Kaggle CSV (which is gitignored).
     """
+    from src.config import DEFAULT_MODEL_VERSION
     from src.data.clean import clean_data
     from src.data.split import make_stratified_split
     from src.db.repository import ingest_reviews, register_model_run
@@ -52,4 +53,4 @@ def seeded_db(tmp_path_factory):
     df, _ = clean_data(pd.DataFrame(rows))
     df, _ = make_stratified_split(df, save_path=tmp_path_factory.mktemp("split") / "ids.json")
     ingest_reviews(df)
-    register_model_run("v1.0.0", "Tuned MultinomialNB", {}, {}, "sha256:test", is_active=1)
+    register_model_run(DEFAULT_MODEL_VERSION, "test", {}, {}, "sha256:test", is_active=1)

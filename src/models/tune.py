@@ -33,6 +33,9 @@ def tune_multinomial_nb(
             ],
             "vect__ngram_range": [(1, 1), (1, 2)],
             "clf__alpha": [0.01, 0.1, 0.5, 1.0],
+            # A learned prior (77% positive) can outweigh the evidence in short reviews; a uniform
+            # prior is NB's analogue of class_weight="balanced". Validation macro-F1 decides.
+            "clf__fit_prior": [True, False],
         }
     ]
 
@@ -51,6 +54,7 @@ def tune_multinomial_nb(
         "vectorizer": "TF-IDF" if isinstance(grid.best_params_["vect"], TfidfVectorizer) else "BoW",
         "ngram_range": list(grid.best_params_["vect__ngram_range"]),
         "alpha": float(grid.best_params_["clf__alpha"]),
+        "fit_prior": bool(grid.best_params_["clf__fit_prior"]),
         "best_cv_f1_macro": float(grid.best_score_),
     }
     return grid.best_estimator_, best_params

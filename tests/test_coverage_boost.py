@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from src.cli import main
-from src.config import RAW_DATA_PATH
+from src.config import DEFAULT_MODEL_VERSION, RAW_DATA_PATH
 from src.data.clean import generate_data_quality_report
 from src.data.eda import generate_eda_figures
 from src.data.load import get_data_summary
@@ -246,7 +246,7 @@ def test_batch_scoring_service(seeded_db):
 def test_cli_subcommands(tmp_path, seeded_db):
     """Test invoking CLI subcommands (eda is covered by test_eda_figures_generation)."""
     # Test promote
-    res = main(["promote", "--version", "v1.0.0"])
+    res = main(["promote", "--version", DEFAULT_MODEL_VERSION])
     assert res == 0
     assert main(["promote", "--version", "v9.9.9"]) == 1
 
