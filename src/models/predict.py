@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 from sqlalchemy import text
 
-from src.config import CLASSES, DEFAULT_MODEL_VERSION, MODELS_DIR
+from src.config import CLASSES, DEFAULT_MODEL_VERSION, MAX_BATCH_SIZE, MODELS_DIR
 from src.db.repository import (
     get_active_model_run,
     get_engine,
@@ -121,8 +121,10 @@ class ModelService:
         """Score an array of up to 100 texts in batch and optionally persist to SQL."""
         if not texts or len(texts) == 0:
             raise ValueError("Input texts array cannot be empty.")
-        if len(texts) > 100:
-            raise ValueError(f"Batch size {len(texts)} exceeds maximum allowed limit of 100.")
+        if len(texts) > MAX_BATCH_SIZE:
+            raise ValueError(
+                f"Batch size {len(texts)} exceeds maximum allowed limit of {MAX_BATCH_SIZE}."
+            )
 
         clean_texts = [str(t).strip() for t in texts]
         preds = self.pipeline.predict(clean_texts)

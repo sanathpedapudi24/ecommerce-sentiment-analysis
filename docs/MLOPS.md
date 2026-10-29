@@ -11,11 +11,11 @@ Scope: introductory lifecycle, versioning, reproducibility, automation (Modules 
 | Item | Rule |
 |---|---|
 | Random seed | `42`, set in `config.yaml`, passed to splits, models, searches |
-| Dependencies | Pinned in `requirements.txt` (exact versions); Python 3.11 |
+| Dependencies | Declared in `pyproject.toml`, exact versions locked in `uv.lock`; Python 3.11 (`.python-version`) |
 | Data | SHA-256 hash of `data/raw/reviews.csv` stored in `metadata.json` |
 | Code | Git commit hash stored in `metadata.json`; training refuses to run with a dirty tree unless `--allow-dirty` |
 | Splits | Saved in `data/processed/split_ids.json` |
-| Environment | `make setup` builds the venv; optional `Dockerfile` for the API |
+| Environment | `make setup` runs `uv sync` to build `.venv`; optional `Dockerfile` for the API |
 
 ## Model versioning
 
@@ -49,7 +49,7 @@ The same record is inserted into `model_runs`. Promotion = setting `is_active=1`
 
 GitHub Actions `.github/workflows/ci.yml` on push and pull request:
 1. Install dependencies
-2. `ruff` and `black --check`
+2. `ruff check` and `ruff format --check`
 3. `pytest` with coverage gate (≥ 70%)
 4. Smoke train on a 500-row sample and assert pipeline artefact loads and predicts
 

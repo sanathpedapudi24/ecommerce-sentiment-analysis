@@ -20,10 +20,22 @@ except LookupError:
     nltk.download("stopwords", quiet=True)
     _STOPWORDS = set(stopwords.words("english"))
 
+try:
+    WordNetLemmatizer().lemmatize("dresses")
+except LookupError:
+    nltk.download("wordnet", quiet=True)
+
 # Negations that must be preserved
 NEGATIONS: set[str] = {"no", "not", "nor", "never", "n't", "against"}
 CUSTOM_STOPWORDS: set[str] = _STOPWORDS - NEGATIONS
 
+# "didn't" / "didnt" -> "did not": otherwise punctuation stripping leaves "didn" (a stop word) or the
+# token "didnt", and the negation is lost. Apostrophe-less forms need an explicit stem list because
+# ordinary words also end in "nt" (want, print, elegant).
+NEGATION_CONTRACTION_PATTERN = re.compile(
+    r"\b(do|does|did|is|was|were|are|ca|could|would|should|wo|have|has|had|ai|need|must)n['’]?t\b"
+    r"|n['’]t\b"
+)
 URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
 HTML_PATTERN = re.compile(r"<[^>]+>")
 DIGIT_PATTERN = re.compile(r"\d+")
@@ -76,6 +88,7 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         # Remove URLs, HTML, digits, punctuation
         text_str = URL_PATTERN.sub(" ", text_str)
         text_str = HTML_PATTERN.sub(" ", text_str)
+        text_str = NEGATION_CONTRACTION_PATTERN.sub(r"\1 not", text_str)
         text_str = DIGIT_PATTERN.sub(" ", text_str)
         text_str = PUNCT_PATTERN.sub(" ", text_str)
         text_str = WHITESPACE_PATTERN.sub(" ", text_str).strip()

@@ -1,0 +1,28 @@
+{
+  "model_version": "v1.1.0",
+  "algorithm": "Tuned MultinomialNB",
+  "params": {
+    "vectorizer": "BoW",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "alpha": 0.5,
+    "fit_prior": true,
+    "best_cv_f1_macro": 0.6493590998181198
+  },
+  "data_hash": "sha256:bd93cc515747ad1f87b8bc863c9e40da758509e6db6506a96d06976e61e36ee0",
+  "git_commit": "local_build",
+  "seed": 42,
+  "sklearn_version": "1.9.1",
+  "trained_at": "2026-10-29T11:30:45.962572",
+  "train_rows": 15848,
+  "val_rows": 3396,
+  "test_rows": 3396,
+  "metrics": {
+    "val_macro_f1": 0.6595167895553358,
+    "test_macro_f1": 0.6602167935522175,
+    "test_accuracy": 0.8289163722025913,
+    "test_weighted_f1": 0.8345553278509903
+  }
+}

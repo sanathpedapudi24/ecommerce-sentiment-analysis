@@ -46,7 +46,7 @@ Classify e-commerce customer reviews as **negative / neutral / positive**, store
 | NFR-05 | No data leakage: split before fitting any vectoriser or encoder |
 | NFR-06 | Test coverage ≥ 70% on `src/` |
 | NFR-07 | All config (paths, seed, DB URL, model version) in `config.yaml` or environment variables, none hard-coded |
-| NFR-08 | Code formatted with `black` and linted with `ruff` |
+| NFR-08 | Code formatted and linted with `ruff` |
 | NFR-09 | Fresh clone to running API in ≤ 5 commands, documented in `README.md` |
 
 ## 5. Acceptance criteria

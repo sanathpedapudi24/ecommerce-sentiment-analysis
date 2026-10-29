@@ -307,7 +307,9 @@ def save_term_stats(
             }
             for r in term_records
         ]
-        conn.execute(stmt, formatted)
+        # Tree ensembles expose no per-class term weights, so the list can be empty
+        if formatted:
+            conn.execute(stmt, formatted)
 
 
 def fetch_reviews(
@@ -323,6 +325,7 @@ def fetch_reviews(
 
     query_parts = [
         "FROM reviews r LEFT JOIN predictions p ON r.review_id = p.review_id AND p.source = 'batch'"
+        " AND p.model_version = (SELECT model_version FROM model_runs WHERE is_active = 1)"
     ]
     where_clauses = []
     params: dict[str, Any] = {"limit": min(limit, 500), "offset": max(offset, 0)}

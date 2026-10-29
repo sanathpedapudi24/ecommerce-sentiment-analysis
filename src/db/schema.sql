@@ -78,6 +78,7 @@ SELECT
     ROUND(AVG(r.rating), 2) AS avg_rating
 FROM reviews r
 LEFT JOIN predictions p ON r.review_id = p.review_id AND p.source = 'batch'
+    AND p.model_version = (SELECT model_version FROM model_runs WHERE is_active = 1)
 GROUP BY r.department_name, r.class_name, COALESCE(p.predicted_label, r.true_label);
 
 DROP VIEW IF EXISTS vw_rating_vs_predicted;
@@ -88,6 +89,7 @@ SELECT
     COUNT(*) AS review_count
 FROM reviews r
 LEFT JOIN predictions p ON r.review_id = p.review_id AND p.source = 'batch'
+    AND p.model_version = (SELECT model_version FROM model_runs WHERE is_active = 1)
 GROUP BY r.rating, COALESCE(p.predicted_label, r.true_label);
 
 DROP VIEW IF EXISTS vw_negative_reviews;
@@ -101,6 +103,7 @@ SELECT
     COALESCE(p.confidence, 1.0) AS confidence
 FROM reviews r
 JOIN predictions p ON r.review_id = p.review_id AND p.source = 'batch'
+    AND p.model_version = (SELECT model_version FROM model_runs WHERE is_active = 1)
 WHERE p.predicted_label = 'negative'
 ORDER BY p.confidence ASC;
 

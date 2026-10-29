@@ -1,10 +1,10 @@
 .PHONY: help setup data eda train evaluate promote batch-score export serve test lint format all clean
 
-PYTHON ?= python
+PYTHON ?= uv run python
 
 help:
 	@echo Available commands:
-	@echo   make setup        - Install dependencies and NLTK data
+	@echo   make setup        - Create the uv environment and download NLTK data
 	@echo   make data         - Load, clean, split, and ingest raw data into SQLite
 	@echo   make eda          - Generate exploratory data analysis charts
 	@echo   make train        - Train baseline and candidate models, select best, evaluate
@@ -14,14 +14,13 @@ help:
 	@echo   make export       - Export database views to reports/exports/*.csv
 	@echo   make serve        - Run Flask REST API
 	@echo   make test         - Run pytest suite with coverage gate (>= 70%)
-	@echo   make lint         - Run ruff lint check and black format check
-	@echo   make format       - Format code with black and ruff
+	@echo   make lint         - Run ruff lint and format checks
+	@echo   make format       - Format code with ruff
 	@echo   make all          - Run complete pipeline (data -> eda -> train -> batch-score -> export)
 
 setup:
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -r requirements.txt
-	$(PYTHON) -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab')"
+	uv sync
+	$(PYTHON) -m nltk.downloader stopwords wordnet punkt punkt_tab
 
 data:
 	$(PYTHON) -m src.cli data
