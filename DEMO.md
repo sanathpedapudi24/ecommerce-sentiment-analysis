@@ -114,10 +114,13 @@ make serve
 
 **Show:** open **http://localhost:5000** in a browser.
 
-1. Click **Positive**: "The dress fits beautifully and the silk fabric is breathtaking!" → **positive, ~99%**.
-2. Click **Negative**: "Terrible quality, the seams ripped after one wash." → **negative, ~99.7%**.
-3. Click **Mixed**: "It's okay. Runs a little small and the color is duller than pictured." → the model says **positive (~82%)**, a neutral review misread. This is the neutral-class weakness from step 4, live. Use it rather than hiding it.
-4. Click **Batch of 3**: three reviews scored in one request. *"I didn't like the fabric at all and it doesn't fit"* comes back **negative (~50%, neutral ~44%)**, a close call worth pointing out.
+The example buttons are real reviews from the held-out test set:
+
+1. Click **Positive (5★)**: "Great, versatile piece. A great addition to any wardrobe…" → **positive, ~100%**.
+2. Click **Neutral (3★)**: "Pretty but not for tall ladies. Loved the style and color but this dress was simply too short…" → **neutral, ~94%**. The model reads the "loved X **but** Y" pivot.
+3. Click **Negative (1★)**: "Just a ginormous, shapeless shirt. Runs extremely large…" → **negative, ~100%**.
+4. Click **Tricky neutral (3★)**: "Love the style! This top runs large… I love the style." → the model says **positive (~88%)**, a real miss. The review opens and closes with praise, so the mild complaint in the middle gets outweighed. This is the neutral-class weakness from step 4, live; use it rather than hiding it.
+5. Click **Batch: one of each**: the first three reviews scored in one request, one result per line.
 
 **Optional, for a technical audience:** the same API from the terminal. In Windows PowerShell, use `curl.exe`, because plain `curl` there is a different command.
 

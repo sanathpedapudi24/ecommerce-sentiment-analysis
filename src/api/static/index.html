@@ -52,15 +52,16 @@
   </header>
 
   <section class="card">
-    <label for="reviews" class="hint">Paste a customer review. Put several on separate lines to score them as one batch (up to 100). Ctrl+Enter to analyze.</label>
+    <label for="reviews" class="hint">Paste a customer review, or pick a real review from the test set below. Put several on separate lines to score them as one batch (up to 100). Ctrl+Enter to analyze.</label>
     <textarea id="reviews"></textarea>
     <div class="row">
       <button class="primary" id="analyze">Analyze</button>
-      <span class="hint">Try:</span>
-      <button class="chip" data-text="The dress fits beautifully and the silk fabric is breathtaking!">Positive</button>
-      <button class="chip" data-text="It's okay. Runs a little small and the color is duller than pictured.">Mixed</button>
-      <button class="chip" data-text="Terrible quality, the seams ripped after one wash. Returning it.">Negative</button>
-      <button class="chip" data-text="Love it, wearing it every weekend!&#10;Runs slightly small, size up.&#10;I didn't like the fabric at all and it doesn't fit.">Batch of 3</button>
+      <span class="hint">Real reviews:</span>
+      <button class="chip" data-text="Great, versatile piece. A great addition to any wardrobe. Can go with nice trousers and dressier shoes for work or jeans and trainers for a casual look.">Positive (5★)</button>
+      <button class="chip" data-text="Pretty but not for tall ladies. Loved the style and color but this dress was simply too short in the front. I wish this was longer!">Neutral (3★)</button>
+      <button class="chip" data-text="Just a ginormous, shapeless shirt. Runs extremely large. I am normally a medium and the medium was huge.">Negative (1★)</button>
+      <button class="chip" data-text="Love the style! This top runs large. I am going to return the medium I ordered for a small. I wish it came in different colors. I love the style." title="A 3-star review the model gets wrong">Tricky neutral (3★)</button>
+      <button class="chip" data-text="Great, versatile piece. A great addition to any wardrobe. Can go with nice trousers and dressier shoes for work or jeans and trainers for a casual look.&#10;Pretty but not for tall ladies. Loved the style and color but this dress was simply too short in the front. I wish this was longer!&#10;Just a ginormous, shapeless shirt. Runs extremely large. I am normally a medium and the medium was huge.">Batch: one of each</button>
     </div>
   </section>
 
