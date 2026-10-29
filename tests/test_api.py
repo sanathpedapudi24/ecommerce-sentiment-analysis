@@ -18,6 +18,14 @@ def client():
         yield client
 
 
+def test_index_serves_ui(client):
+    """GET / -> 200 HTML page for the browser UI."""
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/html"
+    assert b"Review Sentiment" in resp.data
+
+
 def test_get_health(client):
     """GET /health -> 200, status ok."""
     resp = client.get("/health")

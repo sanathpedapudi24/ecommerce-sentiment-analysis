@@ -33,7 +33,8 @@ raw CSV  ───► │ Ingestion  │──►│  SQLite   │◄──│  
 ├── README.md
 ├── config.yaml
 ├── Makefile
-├── requirements.txt
+├── pyproject.toml           # dependencies (uv)
+├── uv.lock                  # locked versions
 ├── data/
 │   ├── raw/                 # untouched input, gitignored
 │   ├── processed/

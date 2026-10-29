@@ -43,6 +43,11 @@ def test_negations_preserved(preprocessor):
     assert "against" in tokens, "'against' must be retained as negation"
 
 
+def test_contracted_negations_preserved(preprocessor):
+    tokens = preprocessor.preprocess_text("I didn't like it and it doesn’t fit").split()
+    assert tokens.count("not") == 2, "contractions like didn't must keep their negation"
+
+
 def test_lemmatization(preprocessor):
     text = "The pants were shrinking and pants looked longer"
     res = preprocessor.preprocess_text(text)

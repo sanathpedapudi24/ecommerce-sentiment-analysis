@@ -14,30 +14,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.11"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install dependencies
+      - name: Install dependencies (Python version from .python-version)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -c "import nltk; nltk.download('stopwords'); nltk.download('wordnet'); nltk.download('punkt'); nltk.download('punkt_tab')"
+          uv sync --locked
+          uv run python -m nltk.downloader stopwords wordnet punkt punkt_tab
 
       - name: Lint and Format Check
         run: |
-          ruff check src tests
-          ruff format --check src tests
+          uv run ruff check src tests
+          uv run ruff format --check src tests
 
       - name: Run Test Suite with Coverage Gate (>=70%)
         run: |
-          pytest --cov=src --cov-fail-under=70 tests/
+          uv run pytest --cov=src --cov-fail-under=70 tests/
 
       - name: Smoke Test (Sample Train & Inference Verification)
         run: |
-          python -c "
+          uv run python -c "
           import pandas as pd
           from src.data.clean import clean_data
           from src.data.split import make_stratified_split
@@ -60,7 +58,7 @@ jobs:
               'Class Name': ['Dresses'] * 500
           })
           df_clean, _ = clean_data(df_raw)
-          df_split, _ = make_stratified_split(df_clean)
+          df_split, _ = make_stratified_split(df_clean, save_path='/tmp/split_ids.json')
           train_df = df_split[df_split['split'] == 'train']
 
           pipe = Pipeline([
@@ -68,12 +66,12 @@ jobs:
               ('vectorizer', build_bow_vectorizer()),
               ('classifier', MultinomialNB())
           ])
-          pipe.fit(train_df['review_text'], train_df['true_label'])
-          
-          os.makedirs('models/ci_smoke', exist_ok=True)
-          joblib.dump(pipe, 'models/ci_smoke/model.joblib')
-          
-          loaded = joblib.load('models/ci_smoke/model.joblib')
+          pipe.fit(train_df['input_text'], train_df['true_label'])
+
+          os.makedirs('/tmp/ci_smoke', exist_ok=True)
+          joblib.dump(pipe, '/tmp/ci_smoke/model.joblib')
+
+          loaded = joblib.load('/tmp/ci_smoke/model.joblib')
           preds = loaded.predict(['Great fit!', 'Hate this'])
           assert len(preds) == 2, 'Inference failed'
           print('Smoke test passed successfully!')

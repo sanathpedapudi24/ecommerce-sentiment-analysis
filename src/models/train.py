@@ -8,6 +8,7 @@ from typing import Any
 
 import joblib
 import pandas as pd
+import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -86,7 +87,6 @@ def load_dataset_from_db_or_clean() -> pd.DataFrame:
 def train_and_select_model(
     version: str = DEFAULT_MODEL_VERSION,
     fast_mode: bool = False,
-    allow_dirty: bool = True,
 ) -> dict[str, Any]:
     """Train baseline and candidate models, tune, evaluate on test, and persist artifacts."""
     print(f"=== Starting Model Training Pipeline for version: {version} ===")
@@ -141,7 +141,6 @@ def train_and_select_model(
     primary_baseline = (
         baseline_bow if metrics_bow["macro_f1"] >= metrics_tfidf["macro_f1"] else baseline_tfidf
     )
-    (metrics_bow if metrics_bow["macro_f1"] >= metrics_tfidf["macro_f1"] else metrics_tfidf)
 
     # 2. Candidate comparison
     print("\n[Stage 2/5] Training Standard Candidates (Logistic Regression, Random Forest)...")
@@ -182,97 +181,58 @@ def train_and_select_model(
     X_train_preprocessed = preprocessor.transform(X_train)
     tuning_results = tune_candidate_models(X_train_preprocessed, y_train, fast_mode=fast_mode)
 
-    # Reconstruct best pipelines with TextPreprocessor
-    candidates: dict[str, tuple[Pipeline, dict[str, Any], dict[str, Any]]] = {}
-
-    # Candidate A: Tuned MNB
-    best_nb_params = tuning_results["MultinomialNB"]["params"]
-    v_type = best_nb_params["vectorizer"]
-    ng = tuple(best_nb_params["ngram_range"])
-    v_obj = (
-        CountVectorizer(ngram_range=ng, min_df=3, max_features=50000)
-        if v_type == "BoW"
-        else TfidfVectorizer(
-            ngram_range=ng, min_df=3, max_df=0.9, sublinear_tf=True, max_features=50000
+    # Every non-baseline model (standard and tuned, incl. ensembles) competes on validation macro-F1
+    candidates: dict[str, tuple[Pipeline, dict[str, Any], dict[str, Any]]] = {
+        "Standard Logistic Regression": (
+            lr_pipe,
+            {"C": 1.0, "class_weight": "balanced"},
+            metrics_lr,
+        ),
+        "Standard Random Forest": (
+            rf_pipe,
+            {"n_estimators": 100, "class_weight": "balanced"},
+            metrics_rf,
+        ),
+    }
+    tuned_names = {
+        "MultinomialNB": "Tuned MultinomialNB",
+        "LogisticRegression": "Tuned Logistic Regression",
+        "RandomForest": "Tuned Random Forest",
+        "GradientBoosting": "Tuned HistGradientBoosting",
+    }
+    for key, result in tuning_results.items():
+        # The search refit its best estimator on pre-cleaned train text; the cleaner is stateless,
+        # so prepending it yields a servable raw-text pipeline without refitting.
+        tuned_pipe = Pipeline([("preprocessor", TextPreprocessor()), *result["model"].steps])
+        m = compute_metrics(y_val, tuned_pipe.predict(X_val))
+        candidates[tuned_names[key]] = (tuned_pipe, result["params"], m)
+        print(
+            f"  {tuned_names[key]:<28} -> Val Macro-F1: {m['macro_f1']:.4f}, Accuracy: {m['accuracy']:.4f}"
         )
-    )
-    tuned_nb = build_pipeline(v_obj, MultinomialNB(alpha=best_nb_params["alpha"]))
-    tuned_nb.fit(X_train, y_train)
-    m_tuned_nb = compute_metrics(y_val, tuned_nb.predict(X_val))
-    candidates["Tuned MultinomialNB"] = (tuned_nb, best_nb_params, m_tuned_nb)
 
-    # Candidate B: Tuned Logistic Regression
-    best_lr_params = tuning_results["LogisticRegression"]["params"]
-    tuned_lr = build_pipeline(
-        TfidfVectorizer(
-            ngram_range=(1, 2),
-            min_df=3,
-            max_df=0.9,
-            sublinear_tf=True,
-            max_features=50000,
-        ),
-        LogisticRegression(
-            C=best_lr_params["C"],
-            class_weight="balanced",
-            max_iter=1000,
-            random_state=SEED,
-        ),
-    )
-    tuned_lr.fit(X_train, y_train)
-    m_tuned_lr = compute_metrics(y_val, tuned_lr.predict(X_val))
-    candidates["Tuned Logistic Regression"] = (tuned_lr, best_lr_params, m_tuned_lr)
+    def summary_row(name: str, m: dict[str, Any], notes: str) -> dict[str, Any]:
+        return {
+            "name": name,
+            "accuracy": m["accuracy"],
+            "macro_f1": m["macro_f1"],
+            "weighted_f1": m["weighted_f1"],
+            "notes": notes,
+        }
 
-    # Candidate C: Standard / Tuned Random Forest
-    candidates["Random Forest"] = (
-        rf_pipe,
-        {"n_estimators": 100, "class_weight": "balanced"},
-        metrics_rf,
-    )
-
-    # Candidate summary table
     candidate_summary = [
-        {
-            "name": "Untuned MNB (BoW)",
-            "accuracy": metrics_bow["accuracy"],
-            "macro_f1": metrics_bow["macro_f1"],
-            "weighted_f1": metrics_bow["weighted_f1"],
-            "notes": "Baseline",
-        },
-        {
-            "name": "Untuned MNB (TF-IDF)",
-            "accuracy": metrics_tfidf["accuracy"],
-            "macro_f1": metrics_tfidf["macro_f1"],
-            "weighted_f1": metrics_tfidf["weighted_f1"],
-            "notes": "Baseline",
-        },
-        {
-            "name": "Standard Logistic Regression",
-            "accuracy": metrics_lr["accuracy"],
-            "macro_f1": metrics_lr["macro_f1"],
-            "weighted_f1": metrics_lr["weighted_f1"],
-            "notes": "C=1.0, balanced",
-        },
-        {
-            "name": "Standard Random Forest",
-            "accuracy": metrics_rf["accuracy"],
-            "macro_f1": metrics_rf["macro_f1"],
-            "weighted_f1": metrics_rf["weighted_f1"],
-            "notes": "Trees=100, balanced",
-        },
-        {
-            "name": "Tuned MultinomialNB",
-            "accuracy": m_tuned_nb["accuracy"],
-            "macro_f1": m_tuned_nb["macro_f1"],
-            "weighted_f1": m_tuned_nb["weighted_f1"],
-            "notes": f"alpha={best_nb_params['alpha']}",
-        },
-        {
-            "name": "Tuned Logistic Regression",
-            "accuracy": m_tuned_lr["accuracy"],
-            "macro_f1": m_tuned_lr["macro_f1"],
-            "weighted_f1": m_tuned_lr["weighted_f1"],
-            "notes": f"C={best_lr_params['C']:.2f}, balanced",
-        },
+        summary_row("Untuned MNB (BoW)", metrics_bow, "Baseline"),
+        summary_row("Untuned MNB (TF-IDF)", metrics_tfidf, "Baseline"),
+    ] + [
+        summary_row(
+            name,
+            m,
+            ", ".join(
+                f"{k}={v:.3g}" if isinstance(v, float) else f"{k}={v}"
+                for k, v in params.items()
+                if k != "best_cv_f1_macro"
+            ),
+        )
+        for name, (_, params, m) in candidates.items()
     ]
 
     # Select best candidate on validation macro-F1
@@ -351,7 +311,7 @@ def train_and_select_model(
         "data_hash": data_hash,
         "git_commit": os.getenv("GIT_COMMIT", "local_build"),
         "seed": SEED,
-        "sklearn_version": "1.7.2",
+        "sklearn_version": sklearn.__version__,
         "trained_at": pd.Timestamp.now().isoformat(),
         "train_rows": len(X_train),
         "val_rows": len(X_val),

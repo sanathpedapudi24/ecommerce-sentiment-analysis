@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sentiment-api",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "python", "-W", "ignore", "-m", "src.cli", "serve"],
+      "port": 5000
+    }
+  ]
+}

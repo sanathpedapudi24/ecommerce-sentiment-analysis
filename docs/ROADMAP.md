@@ -4,7 +4,7 @@ Maps each course module to a capstone deliverable. Capstone budget: 15 h in Week
 
 | Week | Module | Capstone deliverable |
 |---|---|---|
-| 1 | 1 Intro to ML/DS | Repo, venv, `requirements.txt`, `config.yaml` |
+| 1 | 1 Intro to ML/DS | Repo, uv env (`pyproject.toml`, `uv.lock`), `config.yaml` |
 | 1 | 2 NumPy | Array utilities for metrics and sampling |
 | 2 | 3 Pandas | `load.py`, `clean.py`, data quality report |
 | 2 | 4 Matplotlib/Seaborn | EDA notebook and figures (FR-04) |

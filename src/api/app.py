@@ -86,6 +86,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     # ------------------ Routes ------------------
 
+    @app.route("/", methods=["GET"])
+    def index():
+        """GET / -> single-page UI that scores reviews through /predict and /predict/batch."""
+        return app.send_static_file("index.html")
+
     @app.route("/health", methods=["GET"])
     def health():
         """GET /health -> 200 {"status":"ok","model_version":"v1.0.0","db":"ok"}"""
